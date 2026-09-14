@@ -1,0 +1,18 @@
+node_modules/
+out/
+release/
+release-check/
+dist/
+*.log
+dev.log
+dev.err.log
+pack.log
+pack.err.log
+.env
+.env.*
+*.local
+.DS_Store
+
+# 本地 AI 会话 / 计划文件，含本机绝对路径，不纳入公开仓库
+.codebuddy/
+.zcode/

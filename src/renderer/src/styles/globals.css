@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent-rgb: 124 92 255;
+  --accent-2-rgb: 34 211 238;
+  --glow-rgb: 167 139 250;
+  --surface-rgb: 12 17 30;
+  --ink-rgb: 245 247 250;
+  --muted-rgb: 154 164 178;
+  --subtle-rgb: 108 120 140;
+  --line-rgb: 255 255 255;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body {
+  font-family: 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui,
+    -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgb(var(--ink-rgb));
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* 无边框窗口的拖动区 / 非拖动区标记 */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@layer components {
+  /* 根容器已做一次全窗 blur，卡片直接叠半透明底色即可，
+     去掉嵌套 backdrop-filter 避免多层模糊叠加的常驻 GPU 开销 */
+  .glass-card {
+    background: rgb(var(--surface-rgb) / 0.5);
+    border: 1px solid rgb(var(--line-rgb) / 0.1);
+  }
+
+  .glass-card-strong {
+    background: rgb(var(--surface-rgb) / 0.8);
+    border: 1px solid rgb(var(--line-rgb) / 0.14);
+  }
+
+  .hairline {
+    border-color: rgb(var(--line-rgb) / 0.1);
+  }
+
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line-rgb) / 0.22) transparent;
+  }
+
+  .scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--line-rgb) / 0.18);
+    border-radius: 999px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--line-rgb) / 0.32);
+  }
+
+  .field-input {
+    width: 100%;
+    background: rgb(var(--surface-rgb) / 0.5);
+    border: 1px solid rgb(var(--line-rgb) / 0.12);
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background 160ms ease-out;
+  }
+
+  .field-input::placeholder {
+    color: rgb(var(--muted-rgb) / 0.75);
+  }
+
+  .field-input:hover {
+    border-color: rgb(var(--line-rgb) / 0.2);
+  }
+
+  .field-input:focus {
+    border-color: rgb(var(--accent-rgb) / 0.7);
+    box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.16);
+    background: rgb(var(--surface-rgb) / 0.68);
+  }
+}
+
+/* 透明窗口下的日期/时间选择器与原生控件配色适配 */
+.scheme-dark input[type='datetime-local'],
+.scheme-dark input[type='date'],
+.scheme-dark input[type='time'] {
+  color-scheme: dark;
+  color: rgb(var(--ink-rgb));
+}
+
+.scheme-light input[type='datetime-local'],
+.scheme-light input[type='date'],
+.scheme-light input[type='time'] {
+  color-scheme: light;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--accent-rgb)) 0%,
+    rgb(var(--accent-2-rgb)) var(--fill, 50%),
+    rgb(var(--line-rgb) / 0.16) var(--fill, 50%),
+    rgb(var(--line-rgb) / 0.16) 100%
+  );
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)));
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: 0 4px 14px -4px rgb(var(--accent-rgb) / 0.9);
+  transition: transform 140ms ease-out;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.14);
+}
+
+input[type='range']:disabled::-webkit-slider-thumb {
+  filter: grayscale(1);
+  cursor: not-allowed;
+}

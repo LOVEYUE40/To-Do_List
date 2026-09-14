@@ -1,0 +1,48 @@
+name: Release
+
+# 推送 v* 标签即自动构建并发布，产物附带 latest.yml 供客户端自动更新使用
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 仓库内 .npmrc 指向国内镜像，境外 Runner 访问不稳定，
+      # 这里用命令行参数覆盖为官方源（CLI 优先级高于 .npmrc）
+      - name: Install dependencies
+        run: npm ci --registry https://registry.npmjs.org/
+
+      # npm 11 会拦截 postinstall 脚本，兜底确保 Electron 二进制就位
+      - name: Ensure Electron binary
+        shell: pwsh
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+        run: |
+          if (-not (Test-Path node_modules/electron/dist/electron.exe)) {
+            node node_modules/electron/install.js
+          }
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
+        run: npm run release

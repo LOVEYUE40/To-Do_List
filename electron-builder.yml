@@ -1,0 +1,28 @@
+appId: com.todowidget.app
+productName: 待办小组件
+directories:
+  output: release
+  buildResources: build
+compression: maximum
+files:
+  - out/**/*
+  - package.json
+# 自动更新源：electron-builder 据此生成 app-update.yml，并产出 latest.yml 供 electron-updater 校验
+publish:
+  provider: github
+  owner: LOVEYUE40
+  repo: To-Do_List
+win:
+  target:
+    - nsis
+  # 产物名必须是纯 ASCII：中文 productName 会让 latest.yml 里的文件名与实际产物不一致，
+  # 导致 electron-updater 下载时 404。展示名仍由 productName 与 shortcutName 保持中文。
+  artifactName: todo-widget-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 待办小组件
+  differentialPackage: true
