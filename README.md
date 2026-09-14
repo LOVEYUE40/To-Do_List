@@ -124,7 +124,7 @@ npm run typecheck          # 全量类型检查
 ## 目录结构
 
 ```
-To_Do_List/
+To-Do_List/
 ├── .github/workflows/release.yml   # v* 标签触发的自动发版工作流
 ├── .gitattributes                  # 统一行尾，避免 CRLF 噪声
 ├── LICENSE                         # MIT
@@ -195,11 +195,11 @@ electron-updater 无法匿名读取私有仓库的 Release，请将仓库设为�
 
 ## 推送到 GitHub
 
-仓库地址：`git@github.com:LOVEYUE40/To_Do_List.git`
+仓库地址：`https://github.com/LOVEYUE40/To-Do_List`
 
 ```bash
 git init -b main
-git remote add origin git@github.com:LOVEYUE40/To_Do_List.git
+git remote add origin git@github.com:LOVEYUE40/To-Do_List.git
 git add -A
 git commit -m "feat: 桌面待办小组件 1.1.0"
 git push -u origin main
