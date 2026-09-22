@@ -42,9 +42,21 @@ jobs:
 
       # 注意：这里不要设 ELECTRON_MIRROR——electron-builder 的下载器拼 GitHub
       # release URL 时不补 v 前缀（31.7.7 vs v31.7.7），会 404；
-      # 不设置时它默认走官方地址且路径正确
-      - name: Build and publish
+      # 不设置时它默认走官方地址且路径正确。
+      # 只构建产物，不用 electron-builder 内置 publish（实测会在
+      # “creating GitHub release”后静默退出），上传交给下一步
+      - name: Build installer
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
-        run: npm run release
+        run: npm run package -- --publish never
+
+      # 显式创建 Release 并上传安装包 / blockmap / latest.yml，
+      # 任何失败都会明确报错，供 electron-updater 使用
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+
