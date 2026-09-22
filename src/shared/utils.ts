@@ -231,7 +231,6 @@ export interface TrendPoint {
 export function buildTrend(items: TodoItem[], days: number, now = Date.now()): TrendPoint[] {
   const DAY_MS = 24 * 60 * 60 * 1000
   const today = startOfDay(now)
-  const firstDay = today - (days - 1) * DAY_MS
   const points: TrendPoint[] = []
   for (let i = days - 1; i >= 0; i -= 1) {
     const day = today - i * DAY_MS
@@ -241,13 +240,16 @@ export function buildTrend(items: TodoItem[], days: number, now = Date.now()): T
       completed: 0
     })
   }
-  // 单次遍历按天分桶，替代每天两次全量扫描
+  // 单次遍历按天分桶，替代每天两次全量扫描。
+  // points[0] 是最早的一天、points[days-1] 是今天，因此下标必须按「距今多少天」
+  // 从后往前推算（days-1-age）。早先这里用的是「距 firstDay 的偏移量」再取反，
+  // 结果整体镜像：今天的活跃被画到了最早一格，图表看上去永远在倒退。
   for (const item of items) {
-    const createdOffset = Math.round((startOfDay(item.createdAt) - firstDay) / DAY_MS)
-    if (createdOffset >= 0 && createdOffset < days) points[days - 1 - createdOffset].created += 1
+    const createdAge = Math.round((today - startOfDay(item.createdAt)) / DAY_MS)
+    if (createdAge >= 0 && createdAge < days) points[days - 1 - createdAge].created += 1
     if (item.done && item.completedAt) {
-      const doneOffset = Math.round((startOfDay(item.completedAt) - firstDay) / DAY_MS)
-      if (doneOffset >= 0 && doneOffset < days) points[days - 1 - doneOffset].completed += 1
+      const doneAge = Math.round((today - startOfDay(item.completedAt)) / DAY_MS)
+      if (doneAge >= 0 && doneAge < days) points[days - 1 - doneAge].completed += 1
     }
   }
   return points
@@ -285,8 +287,31 @@ export function computeListStats(items: TodoItem[], lists: TodoList[]): ListStat
 
 /** 导入数据允许出现的主题 id 白名单 */
 const THEME_IDS = new Set<string>([...THEME_PRESETS.map((preset) => preset.id), 'custom'])
+/** 旧主题 id 迁移映射：历史配置/导入文件里的废弃配色自动升级到替代方案，避免静默跳回默认主题 */
+const THEME_MIGRATIONS: Record<string, string> = { midnight: 'warmpaper' }
 const COLOR_SCHEMES: ColorScheme[] = ['light', 'dark', 'system']
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
+const FALSY_STRINGS = new Set(['false', '0', '', 'no', 'off'])
+const TRUTHY_STRINGS = new Set(['true', '1', 'yes', 'on'])
+
+/**
+ * 布尔强转，显式处理字符串真值陷阱。
+ *
+ * 直接用 Boolean() 是不够的：手改过的 JSON 里 "false" 是非空字符串，
+ * Boolean("false") === true，会把「关闭」读成「开启」——正是注释里想防的那种情况。
+ */
+function toBoolean(value: unknown, fallback: boolean): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (FALSY_STRINGS.has(normalized)) return false
+    if (TRUTHY_STRINGS.has(normalized)) return true
+    return fallback
+  }
+  if (typeof value === 'number') return Number.isFinite(value) && value !== 0
+  if (value === null || value === undefined) return fallback
+  return Boolean(value)
+}
 
 /** 窗口边界校验：四个字段必须是有限数字且尺寸合理，否则丢弃（回退到默认位置），防止导入数据把窗口移出屏幕 */
 function normalizeBounds(raw: unknown): WindowBounds | undefined {
@@ -309,12 +334,16 @@ export function normalizeSettings(raw: unknown): AppSettings {
   merged.opacity = clamp(Number(merged.opacity) || DEFAULT_SETTINGS.opacity, 0.3, 1)
   merged.glassAlpha = clamp(Number(merged.glassAlpha) || 0, 0, 1)
   merged.blur = clamp(Number(merged.blur) || 0, 0, 28)
-  // 布尔字段强转：导入数据可能携带字符串 "false" / 1 等真值陷阱
-  merged.alwaysOnTop = Boolean(merged.alwaysOnTop)
-  merged.launchAtLogin = Boolean(merged.launchAtLogin)
-  merged.disableHardwareAcceleration = Boolean(merged.disableHardwareAcceleration)
-  merged.hardenReadability = Boolean(merged.hardenReadability)
-  merged.theme = THEME_IDS.has(merged.theme) ? merged.theme : DEFAULT_SETTINGS.theme
+  // 布尔字段强转：导入数据可能携带字符串 "false" / 0 等真值陷阱
+  merged.alwaysOnTop = toBoolean(merged.alwaysOnTop, DEFAULT_SETTINGS.alwaysOnTop)
+  merged.launchAtLogin = toBoolean(merged.launchAtLogin, DEFAULT_SETTINGS.launchAtLogin)
+  merged.disableHardwareAcceleration = toBoolean(
+    merged.disableHardwareAcceleration,
+    DEFAULT_SETTINGS.disableHardwareAcceleration
+  )
+  merged.hardenReadability = toBoolean(merged.hardenReadability, DEFAULT_SETTINGS.hardenReadability)
+  const themeId = THEME_MIGRATIONS[merged.theme] ?? merged.theme
+  merged.theme = THEME_IDS.has(themeId) ? (themeId as AppSettings['theme']) : DEFAULT_SETTINGS.theme
   merged.colorScheme = COLOR_SCHEMES.includes(merged.colorScheme)
     ? merged.colorScheme
     : DEFAULT_SETTINGS.colorScheme
@@ -327,7 +356,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   // 引导版本取非负整数：非法值（NaN / 负数 / 字符串）一律回退为「从未看过」
   const guideVersion = Math.floor(Number(merged.guideVersion))
   merged.guideVersion = Number.isFinite(guideVersion) && guideVersion > 0 ? guideVersion : 0
-  merged.autoUpdateCheck = Boolean(merged.autoUpdateCheck)
+  merged.autoUpdateCheck = toBoolean(merged.autoUpdateCheck, DEFAULT_SETTINGS.autoUpdateCheck)
   merged.updateFeedUrl = typeof merged.updateFeedUrl === 'string' ? merged.updateFeedUrl : ''
   merged.bounds = normalizeBounds(merged.bounds)
   merged.schemaVersion = SCHEMA_VERSION
@@ -347,14 +376,14 @@ export function normalizeItem(raw: unknown, fallbackListId: string, index: numbe
     listId: typeof input.listId === 'string' && input.listId ? input.listId : fallbackListId,
     title,
     note: typeof input.note === 'string' ? input.note : '',
-    done: Boolean(input.done),
+    done: toBoolean(input.done, false),
     priority: (['none', 'low', 'medium', 'high'] as Priority[]).includes(input.priority as Priority)
       ? (input.priority as Priority)
       : 'none',
     tags: Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === 'string').slice(0, 12) : [],
     dueAt: finite(input.dueAt) ? input.dueAt : null,
     remindAt: finite(input.remindAt) ? input.remindAt : null,
-    notified: Boolean(input.notified),
+    notified: toBoolean(input.notified, false),
     createdAt: finite(input.createdAt) ? input.createdAt : now,
     updatedAt: finite(input.updatedAt) ? input.updatedAt : now,
     completedAt: finite(input.completedAt) ? input.completedAt : null,
@@ -427,4 +456,50 @@ export function validateAppData(raw: unknown): ValidationResult {
     },
     counts: { lists: lists.length, items: items.length }
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* 运行时补丁校验（data:save）                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 校验并规范化 data:save 传来的 lists 补丁。
+ *
+ * 与导入路径复用同一套 normalizeList 规则，额外做 id 去重（渲染层若产生重复 id，
+ * 后续以 id 为 key 的渲染与查找都会出错）。
+ * 返回 null 表示该字段不是数组，调用方应整体忽略而不是写入半截数据。
+ */
+export function normalizeListsPatch(raw: unknown): TodoList[] | null {
+  if (!Array.isArray(raw)) return null
+  const seen = new Set<string>()
+  return raw
+    .map((list, index) => normalizeList(list, index))
+    .filter((list): list is TodoList => list !== null)
+    .map((list) => {
+      let id = list.id
+      while (seen.has(id)) id = uid('list')
+      seen.add(id)
+      return { ...list, id }
+    })
+}
+
+/**
+ * 校验并规范化 data:save 传来的 items 补丁。
+ *
+ * 这里刻意不套用 MAX_IMPORT_ITEMS：渲染层是这份数据的合法所有者，
+ * 拒绝一次它以为成功的保存会静默丢掉用户任务。该上限只属于外部导入路径。
+ * 非法元素（null、缺 title 等）会被丢弃，避免脏数据进入提醒轮询导致崩溃。
+ */
+export function normalizeItemsPatch(raw: unknown, fallbackListId: string): TodoItem[] | null {
+  if (!Array.isArray(raw)) return null
+  const seen = new Set<string>()
+  return raw
+    .map((item, index) => normalizeItem(item, fallbackListId, index))
+    .filter((item): item is TodoItem => item !== null)
+    .map((item) => {
+      let id = item.id
+      while (seen.has(id)) id = uid('task')
+      seen.add(id)
+      return { ...item, id }
+    })
 }

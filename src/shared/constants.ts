@@ -3,8 +3,8 @@ import type { AppSettings, Priority } from './types'
 /** 数据结构版本号，导入旧版本数据时据此做迁移 */
 export const SCHEMA_VERSION = 1
 
-/** 引导内容版本号：调高后已看过的用户会再次看到新手引导 */
-export const GUIDE_VERSION = 1
+/** 引导内容版本号：调高后已看过的用户会再次看到新手引导（v2：同步暖纸配色与 Excel 导出说明） */
+export const GUIDE_VERSION = 2
 
 /** 导入数据的安全上限，超过则给出提示 */
 export const MAX_IMPORT_ITEMS = 5000
@@ -31,6 +31,7 @@ export const IPC = {
   dataSave: 'data:save',
   dataSummary: 'data:summary',
   dataExport: 'data:export',
+  dataExportExcel: 'data:export-excel',
   dataImport: 'data:import',
   dataClear: 'data:clear',
   dataOpenFolder: 'data:open-folder',
@@ -130,13 +131,13 @@ export const THEME_PRESETS: ThemePreset[] = [
     lightBg: ['#FFF4EB', '#FFECEC']
   },
   {
-    id: 'midnight',
-    name: '午夜霓虹',
-    accent: '#6366F1',
-    accent2: '#EC4899',
-    glow: '#818CF8',
-    darkBg: ['#0B0B22', '#050510'],
-    lightBg: ['#EFF0FF', '#F8EEFF']
+    id: 'warmpaper',
+    name: '暖纸',
+    accent: '#C9843E',
+    accent2: '#E3B23C',
+    glow: '#EFD9A8',
+    darkBg: ['#221A10', '#120D07'],
+    lightBg: ['#FAF4E6', '#F3E7CE']
   }
 ]
 

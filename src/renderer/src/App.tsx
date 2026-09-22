@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Loader2, Undo2 } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { GUIDE_VERSION } from '@shared/constants'
 import { TitleBar } from '@/components/layout/TitleBar'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -70,7 +71,22 @@ function Toast() {
 }
 
 export default function App() {
-  const settings = useSettingsStore((state) => state.settings)
+  // 只订阅外壳真正用到的字段。settings 是整体替换的对象，
+  // 直接订阅整个对象会让每次设置变更（含滑块拖动）都重渲染整棵树。
+  const [windowMode, opacity, blur, hardenReadability, settingsGlassAlpha] = useSettingsStore(
+    useShallow((state) => [
+      state.settings.windowMode,
+      state.settings.opacity,
+      state.settings.blur,
+      state.settings.hardenReadability,
+      state.settings.glassAlpha
+    ])
+  )
+  const [theme, customAccent, colorScheme] = useSettingsStore(
+    useShallow((state) => [state.settings.theme, state.settings.customAccent, state.settings.colorScheme])
+  )
+  const guideVersion = useSettingsStore((state) => state.settings.guideVersion)
+
   const settingsReady = useSettingsStore((state) => state.ready)
   const loadSettings = useSettingsStore((state) => state.load)
   const guideOpen = useSettingsStore((state) => state.guideOpen)
@@ -80,7 +96,7 @@ export default function App() {
   const loadTodos = useTodoStore((state) => state.load)
   const view = useTodoStore((state) => state.ui.view)
 
-  useTheme(settings)
+  useTheme({ theme, customAccent, colorScheme })
   useReminder()
   useDesktopEvents()
 
@@ -93,20 +109,20 @@ export default function App() {
   // 因此窗口形态切换导致整窗重建后不会重复弹出
   useEffect(() => {
     if (!settingsReady || guideOpen) return
-    if (settings.guideVersion >= GUIDE_VERSION) return
+    if (guideVersion >= GUIDE_VERSION) return
     openGuide()
-  }, [settingsReady, settings.guideVersion, guideOpen, openGuide])
+  }, [settingsReady, guideVersion, guideOpen, openGuide])
 
-  const isWidget = settings.windowMode === 'widget'
-  const glassAlpha = settings.hardenReadability ? selectGlassAlpha(settings) : settings.glassAlpha
+  const isWidget = windowMode === 'widget'
+  const glassAlpha = hardenReadability ? selectGlassAlpha({ opacity, glassAlpha: settingsGlassAlpha }) : settingsGlassAlpha
   const ready = settingsReady && todosReady
-  const boostReadability = settings.hardenReadability && settings.opacity <= 0.6
+  const boostReadability = hardenReadability && opacity <= 0.6
   // 底色拉满时末端色标同样为 1，窗口完全实心、不再透出桌面；底色越淡渐变层次越明显
   const endAlpha = Math.max(0, glassAlpha - 0.16 * (1 - glassAlpha))
-  const backdrop = settings.blur > 0 && glassAlpha < 0.999 ? `blur(${settings.blur}px) saturate(1.4)` : 'none'
+  const backdrop = blur > 0 && glassAlpha < 0.999 ? `blur(${blur}px) saturate(1.4)` : 'none'
 
   return (
-    <div className="h-full w-full" style={{ opacity: settings.opacity }}>
+    <div className="h-full w-full" style={{ opacity }}>
       <div
         className={cn(
           'relative flex h-full w-full flex-col overflow-hidden border border-line/12',
@@ -116,6 +132,10 @@ export default function App() {
           background: `linear-gradient(158deg, rgb(var(--surface-rgb) / ${glassAlpha}), rgb(var(--surface-rgb) / ${endAlpha}))`,
           backdropFilter: backdrop,
           WebkitBackdropFilter: backdrop,
+          // 把常驻模糊层固定为独立合成层：部分 Windows 驱动在 GPU 负载波动时
+          // 会反复重建未提升的 backdrop-filter 图层，表现为背景偶发闪烁
+          willChange: 'backdrop-filter',
+          transform: 'translateZ(0)',
           boxShadow: isWidget
             ? '0 26px 72px -34px rgba(0,0,0,0.85), inset 0 1px 0 0 rgb(var(--line-rgb) / 0.1)'
             : 'none',

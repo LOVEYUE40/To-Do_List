@@ -6,8 +6,6 @@ import { desktop } from '@/lib/desktop-api'
 interface SettingsStore {
   settings: AppSettings
   ready: boolean
-  /** 快捷键注册失败提示 */
-  shortcutWarning: string | null
   /** 新手引导是否展开；仅内存态，故意不持久化，避免被写成「每次启动自动弹」 */
   guideOpen: boolean
   updateStatus: UpdateStatus
@@ -17,7 +15,6 @@ interface SettingsStore {
   /** 窗口形态切换会触发主进程整窗重建，不做乐观更新以免状态错乱 */
   setWindowMode: (mode: WindowMode) => void
   applyExternal: (settings: AppSettings) => void
-  setShortcutWarning: (message: string | null) => void
   openGuide: () => void
   closeGuide: () => void
   setUpdateStatus: (status: UpdateStatus) => void
@@ -41,13 +38,18 @@ function syncSettingsSoon(patch: Partial<AppSettings>): void {
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   ready: false,
-  shortcutWarning: null,
   guideOpen: false,
   updateStatus: { state: 'idle' },
 
   load: async () => {
-    const settings = await desktop.settings.get()
-    set({ settings, ready: true })
+    try {
+      const settings = await desktop.settings.get()
+      set({ settings, ready: true })
+    } catch (err) {
+      // 与任务数据同理：失败也要放行 UI，避免永远停在载入页
+      console.error('[settings] 载入设置失败，使用默认值：', err)
+      set({ ready: true })
+    }
   },
 
   patch: (patch) => {
@@ -70,8 +72,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ settings })
   },
 
-  setShortcutWarning: (message) => set({ shortcutWarning: message }),
-
   openGuide: () => set({ guideOpen: true }),
 
   closeGuide: () => set({ guideOpen: false }),
@@ -80,7 +80,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 }))
 
 /** 常用派生选择器，避免在组件里重复计算 */
-export function selectGlassAlpha(settings: AppSettings): number {
+export function selectGlassAlpha(settings: Pick<AppSettings, 'opacity' | 'glassAlpha'>): number {
   // 低不透明度时自动加深玻璃底色，保证文字可读性
   const readable = settings.opacity <= 0.5 ? Math.min(1, settings.glassAlpha + 0.35) : settings.glassAlpha
   return readable

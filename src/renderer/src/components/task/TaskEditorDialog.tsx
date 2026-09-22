@@ -56,7 +56,7 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
     } else {
       setLead(15)
     }
-  }, [open, item, defaultListId])
+  }, [open, item, defaultListId, initialTitle])
 
   const commitTag = (): void => {
     const value = tagDraft.trim().replace(/^#/, '')
@@ -110,8 +110,9 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
       }
     >
       <div className="flex flex-col gap-3.5">
-        <Field label="任务标题" hint={`${title.length}/120`}>
+        <Field label="任务标题" hint={`${title.length}/120`} htmlFor="task-editor-title">
           <Input
+            id="task-editor-title"
             autoFocus
             maxLength={120}
             value={title}
@@ -123,8 +124,9 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
           />
         </Field>
 
-        <Field label="备注说明" hint="可选">
+        <Field label="备注说明" hint="可选" htmlFor="task-editor-note">
           <TextArea
+            id="task-editor-note"
             rows={3}
             maxLength={500}
             value={note}
@@ -134,8 +136,9 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="所属清单">
+          <Field label="所属清单" htmlFor="task-editor-list">
             <Select
+              id="task-editor-list"
               value={listId}
               options={lists.map((list) => ({ value: list.id, label: list.name }))}
               onChange={setListId}
@@ -162,6 +165,7 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
               </button>
             ))}
             <input
+              aria-label="添加标签"
               value={tagDraft}
               placeholder={tags.length === 0 ? '输入标签后回车' : ''}
               onChange={(event) => setTagDraft(event.target.value)}
@@ -192,6 +196,7 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
           <div className="mt-2.5 flex items-center gap-2">
             <input
               type="datetime-local"
+              aria-label="截止时间"
               value={due}
               onChange={(event) => setDue(event.target.value)}
               className="field-input no-drag flex-1 py-[7px] text-[12.5px]"
@@ -207,6 +212,7 @@ export function TaskEditorDialog({ open, item, defaultListId, initialTitle = '',
             <div className="mt-2 flex items-center gap-2">
               <Bell size={12} className="text-subtle" />
               <Select
+                aria-label="提醒时机"
                 value={String(lead)}
                 options={REMIND_LEAD_OPTIONS.map((option) => ({
                   value: String(option.value),

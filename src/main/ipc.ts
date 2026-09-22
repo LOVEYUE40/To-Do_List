@@ -10,6 +10,7 @@ import type {
   WindowMode
 } from '@shared/types'
 import { IPC } from '@shared/constants'
+import { normalizeItemsPatch, normalizeListsPatch, normalizeSettings } from '@shared/utils'
 import { store } from './store'
 import {
   applyAlwaysOnTop,
@@ -62,8 +63,19 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.dataSave, (_event, patch: Partial<AppData>): boolean => {
     if (!patch || typeof patch !== 'object') return false
     const safe: Partial<AppData> = {}
-    if (Array.isArray(patch.lists)) safe.lists = patch.lists
-    if (Array.isArray(patch.items)) safe.items = patch.items
+
+    // 必须先解析 lists：items 的 fallbackListId 依赖它，
+    // 否则新建清单与新增任务同时提交时，任务会被挂到错误的清单上。
+    if (patch.lists !== undefined) {
+      const lists = normalizeListsPatch(patch.lists)
+      if (lists) safe.lists = lists
+    }
+    if (patch.items !== undefined) {
+      const fallbackListId = safe.lists?.[0]?.id ?? store.get().lists[0]?.id ?? 'list_inbox'
+      const items = normalizeItemsPatch(patch.items, fallbackListId)
+      if (items) safe.items = items
+    }
+
     store.patch(safe)
     runReminderCheck()
     // 数据保存只影响任务数量，轻量刷新 tooltip 即可，不重建整个菜单
@@ -74,6 +86,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.dataSummary, (): DataSummary => store.summary())
 
   ipcMain.handle(IPC.dataExport, async (): Promise<ExportResult> => store.exportFile())
+
+  ipcMain.handle(IPC.dataExportExcel, async (): Promise<ExportResult> => store.exportExcelFile())
 
   ipcMain.handle(IPC.dataImport, async (): Promise<ImportResult> => {
     const previous = store.getSettings()
@@ -103,13 +117,17 @@ export function registerIpcHandlers(): void {
     const previous = store.getSettings()
     const merged: Partial<AppSettings> = { ...(patch ?? {}) }
 
-    // 只有在底部滑块等外观改动时顺带记录窗口位置，避免频繁写入
+    // 每次设置写入都顺带记录当前窗口位置（有防抖，代价可忽略），
+    // 这样拖动底部滑块这类高频改动也能把位置一并持久化。
     if (merged.bounds === undefined) {
       const bounds = captureBounds(previous.bounds)
       if (bounds) merged.bounds = bounds
     }
 
-    const next = store.setSettings(merged)
+    // 合并到现有设置后整体走 normalizeSettings：既保留本次未提交的字段，
+    // 又挡住非法值（windowMode / updateFeedUrl / 数值越界等）。
+    // 这是主进程唯一的设置入口，渲染层即使被注入内容也无法写入越界配置。
+    const next = store.setSettings(normalizeSettings({ ...previous, ...merged }))
     applySettingsSideEffects(next, previous)
     return next
   })
@@ -117,6 +135,9 @@ export function registerIpcHandlers(): void {
   /* ------------------------------- 窗口 --------------------------------- */
 
   ipcMain.handle(IPC.windowSetMode, (_event, mode: WindowMode): boolean => {
+    // 必须先校验：非法值一旦落盘，windowManager 的 MIN_SIZES[mode] 会抛错，
+    // 导致本次及后续每次启动都建不出窗口，只能手改 JSON 才能恢复。
+    if (mode !== 'widget' && mode !== 'window') return false
     requestMode(mode)
     return true
   })
@@ -145,10 +166,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.systemNotify, (_event, payload: { title?: string; body?: string }): boolean => {
     try {
       if (!Notification.isSupported()) return false
-      new Notification({
-        title: payload?.title || '待办小组件',
-        body: payload?.body || ''
-      }).show()
+      // 钳制长度：系统通知由渲染层触发，超长正文会被系统截断甚至导致通知不显示
+      const title = String(payload?.title ?? '').slice(0, 120) || '待办小组件'
+      const body = String(payload?.body ?? '').slice(0, 500)
+      new Notification({ title, body }).show()
       return true
     } catch (err) {
       console.error('[ipc] 发送系统通知失败：', err)

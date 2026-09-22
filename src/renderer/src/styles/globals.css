@@ -75,6 +75,11 @@ button {
     border-color: rgb(var(--line-rgb) / 0.1);
   }
 
+  /* 强调色渐变：此前以 inline style 复制在引导、帮助与更新面板的 8 处 */
+  .accent-gradient {
+    background: linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)));
+  }
+
   .scroll-thin {
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--line-rgb) / 0.22) transparent;

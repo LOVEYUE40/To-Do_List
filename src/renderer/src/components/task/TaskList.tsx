@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -16,6 +16,8 @@ import {
 } from '@dnd-kit/sortable'
 import { ClipboardList } from 'lucide-react'
 import type { TodoItem, TodoList } from '@shared/types'
+import { useSettingsStore } from '@/store/useSettingsStore'
+import { formatShortcut } from '@/lib/format'
 import { TaskItem } from './TaskItem'
 
 interface TaskListProps {
@@ -30,7 +32,7 @@ interface TaskListProps {
   onReorder: (orderedIds: string[]) => void
 }
 
-export function TaskList({
+function TaskListBase({
   items,
   lists,
   sortable,
@@ -45,6 +47,9 @@ export function TaskList({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  // 空状态提示里要展示真实快捷键，用户改键后不能还写着默认值
+  const quickAddShortcut = useSettingsStore((state) => state.settings.shortcuts.quickAdd)
 
   const listMap = useMemo(() => new Map(lists.map((list) => [list.id, list])), [lists])
   const ids = useMemo(() => items.map((item) => item.id), [items])
@@ -66,7 +71,7 @@ export function TaskList({
         </span>
         <p className="text-[12.5px] font-medium text-muted">{emptyHint}</p>
         <p className="text-[11px] leading-relaxed text-subtle">
-          在下方输入框回车即可创建任务，也可以按 Ctrl + Alt + N 随时快速新增。
+          在下方输入框回车即可创建任务，也可以按 {formatShortcut(quickAddShortcut)} 随时快速新增。
         </p>
       </div>
     )
@@ -97,3 +102,6 @@ export function TaskList({
     </DndContext>
   )
 }
+
+/** TaskItem 已 memo；这里一并 memo，避免父视图因无关状态变化时重新遍历整个列表 */
+export const TaskList = memo(TaskListBase)

@@ -19,6 +19,42 @@ const MIN_SIZES: Record<WindowMode, { width: number; height: number }> = {
   window: { width: 420, height: 560 }
 }
 
+/**
+ * 校验开发服务器地址必须是本机。
+ *
+ * ELECTRON_RENDERER_URL 来自环境变量，若被污染成远程地址，
+ * loadURL 会加载任意页面，而 preload（含退出、安装更新、完整数据读写）会跟着过去。
+ * 非法时返回 null，调用方回退到打包后的本地页面。
+ */
+function resolveDevUrl(): string | null {
+  const raw = process.env['ELECTRON_RENDERER_URL']
+  if (!raw) return null
+  try {
+    const parsed = new URL(raw)
+    const isLocal =
+      parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]'
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    if (isLocal && isHttp) return raw
+    console.error('[window] 拒绝非本机的 ELECTRON_RENDERER_URL，已回退本地页面：', raw)
+    return null
+  } catch (err) {
+    console.error('[window] ELECTRON_RENDERER_URL 不是合法 URL，已回退本地页面：', raw, err)
+    return null
+  }
+}
+
+/** 窗口只应展示本地页面：放行 file: 与开发期本机 dev-server */
+function isAllowedNavigation(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'file:') return true
+    const devUrl = resolveDevUrl()
+    return devUrl !== null && parsed.origin === new URL(devUrl).origin
+  } catch {
+    return false
+  }
+}
+
 export function getMainWindow(): BrowserWindow | null {
   return mainWindow
 }
@@ -91,6 +127,18 @@ export function createMainWindow(settings: {
 
   mainWindow = win
 
+  // 导航加固：preload 暴露了退出、安装更新、完整数据读写等能力，
+  // 一旦窗口被导航到外部来源，这些能力会一并带过去，因此只允许本地页面。
+  // 应用内的外链统一走 system:open-external（主进程侧已做 https + github.com 白名单）。
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('will-attach-webview', (event) => event.preventDefault())
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedNavigation(url)) {
+      console.warn('[window] 已拦截非预期的页面跳转：', url)
+      event.preventDefault()
+    }
+  })
+
   if (settings.alwaysOnTop) {
     win.setAlwaysOnTop(true, 'floating')
   }
@@ -123,7 +171,7 @@ export function createMainWindow(settings: {
   const revealFallback = setTimeout(() => revealWindow('fallback-timeout'), 1800)
   win.on('closed', () => clearTimeout(revealFallback))
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
+  const devUrl = resolveDevUrl()
   if (devUrl) {
     void win.loadURL(devUrl)
   } else {

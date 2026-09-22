@@ -57,10 +57,7 @@ export function GuideWizard() {
         <GuideIllustration key={step.id} variant={step.variant} />
 
         <div className="flex items-center gap-2">
-          <span
-            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[9px] text-white"
-            style={{ background: 'linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))' }}
-          >
+          <span className="accent-gradient flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[9px] text-white">
             <Icon size={14} />
           </span>
           <h2 className="text-[15px] font-semibold tracking-tight text-ink">{step.title}</h2>
@@ -71,10 +68,7 @@ export function GuideWizard() {
         <ul className="flex flex-col gap-[7px]">
           {step.bullets.map((bullet) => (
             <li key={bullet} className="flex items-start gap-2">
-              <span
-                className="mt-[6px] h-[6px] w-[6px] shrink-0 rounded-full"
-                style={{ background: 'linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))' }}
-              />
+              <span className="accent-gradient mt-[6px] h-[6px] w-[6px] shrink-0 rounded-full" />
               <span className="text-[12px] leading-[1.6] text-muted">{bullet}</span>
             </li>
           ))}

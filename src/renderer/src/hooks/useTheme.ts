@@ -59,11 +59,14 @@ export function useSystemDark(): boolean {
   return isDark
 }
 
+/** 主题只依赖外观三个字段，收窄入参避免滑块等无关设置变更触发主题重算 */
+export type ThemeInput = Pick<AppSettings, 'theme' | 'customAccent' | 'colorScheme'>
+
 /**
  * 把主题设置投影为全局 CSS 变量。
  * 切换配色 / 明暗时只更新根变量，全应用即时联动，不触发组件重排。
  */
-export function useTheme(settings: AppSettings): boolean {
+export function useTheme(settings: ThemeInput): boolean {
   const systemDark = useSystemDark()
   const isDark = settings.colorScheme === 'system' ? systemDark : settings.colorScheme === 'dark'
 
@@ -93,5 +96,3 @@ export function useTheme(settings: AppSettings): boolean {
 
   return isDark
 }
-
-export { hexToRgbTriple, lighten }

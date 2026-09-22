@@ -3,6 +3,7 @@ import type { ColorScheme, ThemeId } from '@shared/types'
 import { DEFAULT_SETTINGS, THEME_PRESETS } from '@shared/constants'
 import { Button } from '@/components/ui/Button'
 import { Segmented, SettingRow, Slider, Switch } from '@/components/ui/Controls'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { ThemeGallery } from '@/components/settings/ThemeGallery'
 import { SystemPanel } from '@/components/settings/SystemPanel'
 import { UpdatePanel } from '@/components/settings/UpdatePanel'
@@ -29,10 +30,7 @@ export function SettingsView() {
 
   return (
     <section className="scroll-thin flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3 pt-3">
-      <div className="glass-card rounded-card p-3">
-        <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-          <BookOpen size={13} className="text-accent" /> 使用引导
-        </h3>
+      <SectionCard title="使用引导" icon={<BookOpen size={13} />}>
         <p className="mt-1.5 text-[11px] leading-[1.65] text-subtle">
           第一次使用建议先看一遍五步引导；忘记某个操作时，帮助中心里有完整的功能说明与快捷键速查。
         </p>
@@ -49,13 +47,12 @@ export function SettingsView() {
             打开帮助中心
           </Button>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="glass-card rounded-card p-3">
-        <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-            <Sparkles size={13} className="text-accent" /> 配色方案
-          </h3>
+      <SectionCard
+        title="配色方案"
+        icon={<Sparkles size={13} />}
+        extra={
           <div className="flex items-center gap-2">
             <span className="text-[10.5px] text-subtle">{presetName}</span>
             <Button
@@ -71,18 +68,14 @@ export function SettingsView() {
               重置
             </Button>
           </div>
-        </div>
-
+        }
+      >
         <div className="mt-2">
           <ThemeGallery theme={settings.theme} customAccent={settings.customAccent} onSelect={handleThemeSelect} />
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="glass-card rounded-card p-3">
-        <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-          <Droplets size={13} className="text-accent" /> 透明度与毛玻璃
-        </h3>
-
+      <SectionCard title="透明度与毛玻璃" icon={<Droplets size={13} />}>
         <div className="mt-2.5 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-[12.5px] font-medium text-ink">整体不透明度</span>
@@ -128,15 +121,12 @@ export function SettingsView() {
             />
           </SettingRow>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="glass-card rounded-card p-3">
-        <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-          <SunMoon size={13} className="text-accent" /> 明暗外观
-        </h3>
-
+      <SectionCard title="明暗外观" icon={<SunMoon size={13} />}>
         <div className="mt-2 flex flex-col gap-2">
           <Segmented
+            aria-label="明暗外观"
             value={settings.colorScheme}
             options={SCHEME_OPTIONS.map((option) => ({
               ...option,
@@ -151,7 +141,7 @@ export function SettingsView() {
             深色适合夜间与深色壁纸，浅色在明亮桌面下对比更自然；跟随系统时会随系统主题实时切换。
           </p>
         </div>
-      </div>
+      </SectionCard>
 
       <SystemPanel />
 

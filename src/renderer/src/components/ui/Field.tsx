@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
+import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -26,14 +26,29 @@ export function TextArea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
 interface FieldProps {
   label: string
   hint?: string
+  /**
+   * 显式绑定到子控件：不传时 Field 只做视觉分组。
+   * 传入控件的 id 后会渲染成 <label htmlFor>，屏幕阅读器与点击标签聚焦才成立。
+   */
+  htmlFor?: string
   children: ReactNode
 }
 
-export function Field({ label, hint, children }: FieldProps) {
+export function Field({ label, hint, htmlFor, children }: FieldProps) {
+  const fallbackId = useId()
+  const labelId = `${htmlFor ?? fallbackId}-label`
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[12.5px] font-medium text-ink">{label}</span>
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="cursor-pointer text-[12.5px] font-medium text-ink">
+            {label}
+          </label>
+        ) : (
+          <span id={labelId} className="text-[12.5px] font-medium text-ink">
+            {label}
+          </span>
+        )}
         {hint ? <span className="text-[11.5px] text-subtle">{hint}</span> : null}
       </div>
       {children}
@@ -46,11 +61,23 @@ interface SelectProps<T extends string> {
   options: Array<{ value: T; label: string }>
   onChange: (value: T) => void
   className?: string
+  id?: string
+  /** 无可见标签时提供无障碍名称 */
+  'aria-label'?: string
 }
 
-export function Select<T extends string>({ value, options, onChange, className }: SelectProps<T>) {
+export function Select<T extends string>({
+  value,
+  options,
+  onChange,
+  className,
+  id,
+  'aria-label': ariaLabel
+}: SelectProps<T>) {
   return (
     <select
+      id={id}
+      aria-label={ariaLabel}
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
       className={cn(
@@ -60,7 +87,8 @@ export function Select<T extends string>({ value, options, onChange, className }
       )}
     >
       {options.map((option) => (
-        <option key={option.value} value={option.value} className="bg-[#111827] text-ink">
+        // 不写死背景色：原先硬编码的深色在浅色模式下是深底深字，选项几乎不可读
+        <option key={option.value} value={option.value} className="bg-surface text-ink">
           {option.label}
         </option>
       ))}

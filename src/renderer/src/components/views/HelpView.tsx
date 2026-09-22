@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Bell,
   ChevronDown,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { HelpSystemCard } from '@/components/help/HelpSystemCard'
 import { formatShortcut } from '@/lib/format'
 import { useSettingsStore } from '@/store/useSettingsStore'
@@ -30,6 +31,7 @@ const SECTIONS = [
   { id: 'help-faq', label: '常见问题', icon: LayoutList }
 ]
 
+/** 帮助中心的卡片：统一走 SectionCard，仅额外保留锚点滚动偏移 */
 function HelpCard({
   id,
   icon,
@@ -42,13 +44,9 @@ function HelpCard({
   children: ReactNode
 }) {
   return (
-    <section id={id} className="glass-card scroll-mt-2 rounded-card p-3">
-      <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-        <span className="text-accent">{icon}</span>
-        {title}
-      </h3>
+    <SectionCard id={id} title={title} icon={icon} className="scroll-mt-2">
       <div className="mt-2">{children}</div>
-    </section>
+    </SectionCard>
   )
 }
 
@@ -84,7 +82,7 @@ const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: '数据会不会丢？',
-    a: '写盘采用「临时文件 + 重命名」的原子方式，导入与清空前都会自动生成备份（最多保留 5 份）。也可以在「数据」页随时导出 JSON 做离线备份。'
+    a: '写盘采用「临时文件 + 重命名」的原子方式，导入与清空前都会自动生成备份（最多保留 5 份）。也可以在「数据」页随时导出 JSON 做离线备份，或导出 Excel 报表用于查看统计。'
   },
   {
     q: '自动更新提示仓库不可访问？',
@@ -140,17 +138,30 @@ export function HelpView() {
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const handleScroll = (): void => {
+  // 用 IntersectionObserver 取代 scroll 事件里的 querySelector + offsetTop：
+  // 后者每次滚动都要遍历全部 section 并强制布局，滚动越久越卡。
+  useEffect(() => {
     const container = scrollRef.current
-    if (!container) return
-    const line = container.scrollTop + 48
-    let current = SECTIONS[0].id
+    if (!container) return () => undefined
+
+    const visibility = new Map<string, boolean>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) visibility.set(entry.target.id, entry.isIntersecting)
+        // 取文档顺序中第一个可见的 section 作为高亮项，避免快速滚动时来回跳
+        const firstVisible = SECTIONS.find((section) => visibility.get(section.id))
+        if (firstVisible) setActive(firstVisible.id)
+      },
+      // 顶部留 8px 余量，底部收窄到 25%，让高亮跟随进入视口上方的卡片
+      { root: container, rootMargin: '-8px 0px -75% 0px', threshold: 0 }
+    )
+
     for (const section of SECTIONS) {
-      const element = container.querySelector(`#${section.id}`) as HTMLElement | null
-      if (element && element.offsetTop - container.offsetTop <= line) current = section.id
+      const element = container.querySelector(`#${section.id}`)
+      if (element) observer.observe(element)
     }
-    if (current !== active) setActive(current)
-  }
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
@@ -193,7 +204,7 @@ export function HelpView() {
         </div>
       </div>
 
-      <div ref={scrollRef} onScroll={handleScroll} className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+      <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         <div className="flex flex-col gap-2.5">
           <HelpCard id="help-quickstart" icon={<Sparkles size={13} />} title="快速上手">
             <Bullets
@@ -278,6 +289,7 @@ export function HelpView() {
               items={[
                 '全部数据保存在系统用户目录下的 todo-data.json，采用原子写入避免出现半截文件。',
                 '「数据」页可以导出为 JSON 备份，也可以导入此前导出的文件，导入前会自动备份当前数据。',
+                '需要在 Excel / WPS 里查看或统计任务时，可导出 Excel 报表（.xlsx，含「任务」「清单」两个工作表）；完整备份仍建议使用 JSON。',
                 '清空数据会删除全部任务，但保留清单结构与外观设置，且同样会先生成备份。',
                 '历史备份最多保留 5 份，可在数据页点击「打开数据目录」查看。'
               ]}

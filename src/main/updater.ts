@@ -14,6 +14,7 @@ let initialized = false
 let lastStatus: UpdateStatus = { state: 'idle' }
 let progressTimer: ReturnType<typeof setTimeout> | null = null
 let pendingProgress: UpdateStatus | null = null
+let startupCheckTimer: ReturnType<typeof setTimeout> | null = null
 
 function publish(next: UpdateStatus): void {
   lastStatus = { ...next, checkedAt: Date.now() }
@@ -135,6 +136,25 @@ function registerUpdaterEvents(): void {
   })
 }
 
+/**
+ * 校验自定义更新源，只放行 https。
+ *
+ * updateFeedUrl 属于可被渲染层改写的设置项，若不校验就等于把「从哪下载并安装什么」
+ * 交给任意地址。另外 electron-builder.yml 未配置 publisherName / 签名校验，
+ * 因此即使是 https 源，也请自行确认其可信——未签名更新存在被替换的固有风险。
+ */
+function resolveFeedUrl(raw: string): string | null {
+  const value = (raw ?? '').trim()
+  if (!value) return null
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:') return null
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
 /** 应用启动时调用一次；开发环境只记录状态，不注册任何网络行为 */
 export function initUpdater(settings: AppSettings): void {
   if (initialized) return
@@ -150,16 +170,20 @@ export function initUpdater(settings: AppSettings): void {
     autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = true
 
-    const feedUrl = (settings.updateFeedUrl ?? '').trim()
+    const feedUrl = resolveFeedUrl(settings.updateFeedUrl ?? '')
     if (feedUrl) {
       autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl })
       console.info('[updater] 使用自定义更新源：', feedUrl)
+    } else if ((settings.updateFeedUrl ?? '').trim()) {
+      // 非法源静默回退到打包内置源，避免因为一个坏设置彻底失去更新能力
+      console.warn('[updater] 自定义更新源非法（仅支持 https），已回退内置源：', settings.updateFeedUrl)
     }
 
     registerUpdaterEvents()
 
     if (settings.autoUpdateCheck) {
-      setTimeout(() => {
+      startupCheckTimer = setTimeout(() => {
+        startupCheckTimer = null
         void checkForUpdates()
       }, STARTUP_CHECK_DELAY_MS)
     }
@@ -205,4 +229,17 @@ export function quitAndInstall(): void {
   } catch (err) {
     console.error('[updater] 重启安装失败：', err)
   }
+}
+
+/** 退出流程调用：清掉未触发的定时器，避免退出阶段仍有回调去访问已销毁的窗口 */
+export function disposeUpdater(): void {
+  if (progressTimer) {
+    clearTimeout(progressTimer)
+    progressTimer = null
+  }
+  if (startupCheckTimer) {
+    clearTimeout(startupCheckTimer)
+    startupCheckTimer = null
+  }
+  pendingProgress = null
 }

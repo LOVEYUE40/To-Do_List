@@ -8,11 +8,22 @@ interface SegmentedProps<T extends string> {
   options: Array<{ value: T; label: string; icon?: ReactNode }>
   onChange: (value: T) => void
   className?: string
+  /** 无可见标签时提供无障碍名称 */
+  'aria-label'?: string
 }
 
-export function Segmented<T extends string>({ value, options, onChange, className }: SegmentedProps<T>) {
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  className,
+  'aria-label': ariaLabel
+}: SegmentedProps<T>) {
   return (
+    // 单选分组用 radiogroup/radio 语义，屏幕阅读器才能读出「当前选中项」
     <div
+      role="radiogroup"
+      aria-label={ariaLabel}
       className={cn(
         'no-drag inline-flex items-center gap-0.5 rounded-xl border border-line/10 bg-line/[0.06] p-0.5',
         className
@@ -24,10 +35,13 @@ export function Segmented<T extends string>({ value, options, onChange, classNam
           <button
             key={option.value}
             type="button"
+            role="radio"
+            aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] px-2.5 py-1 text-[12px] font-medium',
               'transition-all duration-150 ease-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
               active
                 ? 'bg-gradient-to-br from-accent to-accent2 text-white shadow-[0_6px_18px_-10px_rgb(var(--accent-rgb)/0.95)]'
                 : 'text-muted hover:bg-line/10 hover:text-ink'
@@ -110,30 +124,6 @@ export function Slider({ value, min, max, step = 1, onChange, display, hint, dis
       </div>
       {hint ? <span className="text-[11.5px] leading-relaxed text-subtle">{hint}</span> : null}
     </div>
-  )
-}
-
-interface ChipProps {
-  children: ReactNode
-  color?: string
-  className?: string
-}
-
-export function Chip({ children, color, className }: ChipProps) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-pill border px-2 py-[2px] text-[11px] font-medium',
-        className
-      )}
-      style={
-        color
-          ? { borderColor: `${color}55`, backgroundColor: `${color}1f`, color }
-          : { borderColor: 'rgb(var(--line-rgb) / 0.14)', backgroundColor: 'rgb(var(--line-rgb) / 0.07)' }
-      }
-    >
-      {children}
-    </span>
   )
 }
 

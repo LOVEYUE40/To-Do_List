@@ -16,7 +16,11 @@ export function ViewTabs() {
   const setUi = useTodoStore((state) => state.setUi)
 
   return (
-    <nav className="no-drag relative z-20 flex h-12 shrink-0 items-center justify-around gap-1 border-t border-line/8 px-2">
+    <nav
+      role="tablist"
+      aria-label="主导航"
+      className="no-drag relative z-20 flex h-12 shrink-0 items-center justify-around gap-1 border-t border-line/8 px-2"
+    >
       {TABS.map((tab) => {
         const Icon = tab.icon
         const active = view === tab.id
@@ -24,10 +28,14 @@ export function ViewTabs() {
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={active}
+            aria-current={active ? 'page' : undefined}
             onClick={() => setUi({ view: tab.id })}
             className={cn(
               'group relative flex flex-1 cursor-pointer flex-col items-center justify-center gap-[3px] rounded-xl py-1.5',
               'transition-all duration-150 ease-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
               active ? 'text-ink' : 'text-subtle hover:text-muted'
             )}
           >

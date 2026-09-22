@@ -12,11 +12,8 @@ function Scene({ variant }: { variant: IllustrationVariant }) {
     return (
       <div className="flex items-center gap-3">
         <div
-          className="flex h-[54px] w-[54px] items-center justify-center rounded-[16px] text-white"
-          style={{
-            background: 'linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))',
-            boxShadow: '0 12px 30px -12px rgb(var(--accent-rgb) / 0.95)'
-          }}
+          className="accent-gradient flex h-[54px] w-[54px] items-center justify-center rounded-[16px] text-white"
+          style={{ boxShadow: '0 12px 30px -12px rgb(var(--accent-rgb) / 0.95)' }}
         >
           <Sparkles size={22} />
         </div>
@@ -40,13 +37,8 @@ function Scene({ variant }: { variant: IllustrationVariant }) {
             <span
               className={cn(
                 'flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-[4px] border',
-                checked ? 'border-transparent text-white' : 'border-line/35'
+                checked ? 'accent-gradient border-transparent text-white' : 'border-line/35'
               )}
-              style={
-                checked
-                  ? { background: 'linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))' }
-                  : undefined
-              }
             >
               {checked ? <Check size={9} strokeWidth={3} /> : null}
             </span>
@@ -128,11 +120,8 @@ function Scene({ variant }: { variant: IllustrationVariant }) {
         </div>
       </div>
       <span
-        className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] text-white"
-        style={{
-          background: 'linear-gradient(140deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))',
-          boxShadow: '0 10px 24px -12px rgb(var(--accent-rgb) / 0.95)'
-        }}
+        className="accent-gradient flex h-[30px] w-[30px] items-center justify-center rounded-[10px] text-white"
+        style={{ boxShadow: '0 10px 24px -12px rgb(var(--accent-rgb) / 0.95)' }}
       >
         <Pin size={15} />
       </span>

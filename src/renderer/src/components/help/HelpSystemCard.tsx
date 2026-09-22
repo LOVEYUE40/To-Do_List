@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Monitor } from 'lucide-react'
 import type { AppInfo } from '@shared/types'
 import { SUPPORT_SCOPE } from '@shared/constants'
 import { cn } from '@/lib/cn'
-import { desktop } from '@/lib/desktop-api'
+import { getAppInfo } from '@/lib/desktop-api'
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -23,7 +23,15 @@ export function HelpSystemCard() {
   const [info, setInfo] = useState<AppInfo | null>(null)
 
   useEffect(() => {
-    void desktop.app.info().then(setInfo)
+    let alive = true
+    void getAppInfo()
+      .then((next) => {
+        if (alive) setInfo(next)
+      })
+      .catch((err) => console.error('[help] 读取运行环境失败：', err))
+    return () => {
+      alive = false
+    }
   }, [])
 
   const supported = info?.supported ?? true

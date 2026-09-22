@@ -1,11 +1,48 @@
-import { app, powerMonitor } from 'electron'
+import { app, powerMonitor, session } from 'electron'
 import { store } from './store'
 import { applyAlwaysOnTop, captureBounds, createMainWindow, setQuitting, showMainWindow } from './windowManager'
 import { registerIpcHandlers } from './ipc'
 import { startReminderEngine, stopReminderEngine } from './reminders'
 import { createTray, destroyTray } from './tray'
 import { registerShortcuts, unregisterShortcuts } from './shortcuts'
-import { initUpdater } from './updater'
+import { initUpdater, disposeUpdater } from './updater'
+
+/**
+ * 内容安全策略。
+ *
+ * style-src 必须保留 'unsafe-inline'：渲染层大量使用 React 内联 style（滑块、渐变、
+ * 外壳背景），recharts 也依赖 style 属性，去掉会让整个界面样式失效。
+ * 页面内没有内联 <script>，所以 script-src 可以收紧到 'self'。
+ */
+const CSP_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'"
+].join('; ')
+
+/**
+ * 仅在打包环境注入 CSP。
+ * 开发期不能注入：Vite 会注入内联模块前导码并使用 HMR websocket，
+ * 严格的 script-src / connect-src 会直接把 npm run dev 弄坏。
+ */
+function applyContentSecurityPolicy(): void {
+  if (!app.isPackaged) return
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [CSP_POLICY]
+      }
+    })
+  })
+}
 
 // 单实例：再次启动时聚焦已有窗口，避免多份托盘图标与数据竞争
 const gotLock = app.requestSingleInstanceLock()
@@ -19,6 +56,13 @@ if (!gotLock) {
     app.disableHardwareAcceleration()
   }
 
+  // 背景闪烁修复：小组件常驻置顶、经常被遮挡或隐藏到托盘，
+  // 后台节流会在窗口恢复时引发集中重绘，表现为玻璃背景短时间内的闪烁/跳动。
+  // 必须在 app ready 前追加才生效。
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+  app.commandLine.appendSwitch('disable-renderer-backgrounding')
+  app.commandLine.appendSwitch('disable-background-timer-throttling')
+
   app.on('second-instance', () => {
     showMainWindow()
   })
@@ -27,6 +71,9 @@ if (!gotLock) {
     .whenReady()
     .then(() => {
       app.setAppUserModelId('com.todowidget.app')
+
+      // 必须在创建窗口之前挂上，确保首个页面响应就带上 CSP
+      applyContentSecurityPolicy()
 
       registerIpcHandlers()
 
@@ -78,6 +125,7 @@ if (!gotLock) {
   app.on('will-quit', () => {
     stopReminderEngine()
     unregisterShortcuts()
+    disposeUpdater()
     destroyTray()
   })
 }

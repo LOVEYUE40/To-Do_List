@@ -13,6 +13,7 @@ import {
 import { SMART_VIEWS } from '@shared/constants'
 import { matchesSmartView } from '@shared/utils'
 import { cn } from '@/lib/cn'
+import { useNow } from '@/hooks/useNow'
 import { useTodoStore } from '@/store/useTodoStore'
 
 const SMART_ICONS: Record<string, typeof Layers> = {
@@ -35,10 +36,11 @@ export function Sidebar() {
   const [draft, setDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const collapsed = sidebarCollapsed
+  // 分钟粒度的时间信号：「今天到期 / 已逾期」计数依赖它才会随时间刷新
+  const now = useNow(30_000)
 
   // 单次遍历统计全部视图计数；smart:today/overdue 需走 matchesSmartView
   const counts = useMemo(() => {
-    const now = Date.now()
     const result: Record<string, number> = {}
     for (const item of items) {
       if (item.done) {
@@ -51,7 +53,7 @@ export function Sidebar() {
       result[item.listId] = (result[item.listId] ?? 0) + 1
     }
     return result
-  }, [items])
+  }, [items, now])
   const countOf = (listId: string): number => counts[listId] ?? 0
 
   // 删除确认 3 秒自动退出；切换目标时重置计时
@@ -148,7 +150,7 @@ export function Sidebar() {
                   <>
                     <span className="flex-1 truncate text-[12.5px] font-medium">{list.name}</span>
                     {!confirming ? (
-                      <span className="text-[10.5px] tabular-nums text-subtle group-hover:hidden">
+                      <span className="text-[10.5px] tabular-nums text-subtle group-hover:hidden group-focus-within:hidden">
                         {countOf(list.id)}
                       </span>
                     ) : null}
@@ -160,8 +162,10 @@ export function Sidebar() {
                 <button
                   type="button"
                   title="删除清单"
+                  aria-label="删除清单"
                   onClick={() => setPendingDelete(list.id)}
-                  className="no-drag absolute right-1.5 top-1/2 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-subtle transition-colors duration-150 hover:bg-red-500/16 hover:text-red-400 group-hover:flex"
+                  // 用 opacity 而不是 hidden：display:none 会让按钮脱离 tab 顺序，键盘无法触达
+                  className="no-drag absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-subtle opacity-0 transition-opacity duration-150 hover:bg-red-500/16 hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -202,6 +206,8 @@ export function Sidebar() {
           />
           <button
             type="button"
+            title="取消新建清单"
+            aria-label="取消新建清单"
             onClick={() => {
               setDraft('')
               setAdding(false)

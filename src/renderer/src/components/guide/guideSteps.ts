@@ -28,6 +28,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     bullets: [
       '桌面小组件与普通窗口两种形态，一键切换',
       '任务数据只写入本地文件，不联网、不上传',
+      '支持导出 JSON 完整备份与 Excel 任务报表',
       '随时按 ' + quickAddKey + ' 快速新增任务'
     ]
   },
@@ -63,7 +64,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     variant: 'appearance',
     title: '把外观调成你喜欢的样子',
     description:
-      '设置页可调节整体不透明度、玻璃底色浓度与毛玻璃模糊强度，并内置六套配色方案与自定义强调色。',
+      '设置页可调节整体不透明度、玻璃底色浓度与毛玻璃模糊强度，内置极光紫青、暖纸等六套配色方案，另支持自定义强调色。',
     bullets: [
       '一条滑块控制整窗透明度，可以直接透出壁纸',
       '深色、浅色、跟随系统三种外观随时切换',

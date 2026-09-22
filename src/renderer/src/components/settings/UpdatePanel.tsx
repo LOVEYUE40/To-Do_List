@@ -8,11 +8,12 @@ import {
   RefreshCw,
   TriangleAlert
 } from 'lucide-react'
-import type { UpdateState, UpdateStatus } from '@shared/types'
+import type { UpdateState } from '@shared/types'
 import { RELEASE } from '@shared/constants'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { SettingRow, Switch } from '@/components/ui/Controls'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { formatBytes } from '@/lib/format'
 import { desktop } from '@/lib/desktop-api'
 import { useSettingsStore } from '@/store/useSettingsStore'
@@ -39,7 +40,8 @@ const STATE_META: Record<UpdateState, { label: string; tone: Tone }> = {
 }
 
 export function UpdatePanel() {
-  const settings = useSettingsStore((state) => state.settings)
+  // 本面板只读取 autoUpdateCheck，收窄订阅避免外观滑块拖动连带重渲染
+  const autoUpdateCheck = useSettingsStore((state) => state.settings.autoUpdateCheck)
   const patch = useSettingsStore((state) => state.patch)
   const status = useSettingsStore((state) => state.updateStatus)
   const setUpdateStatus = useSettingsStore((state) => state.setUpdateStatus)
@@ -47,8 +49,22 @@ export function UpdatePanel() {
   const [version, setVersion] = useState('')
 
   useEffect(() => {
-    void desktop.update.status().then(setUpdateStatus)
-    void desktop.app.version().then(setVersion)
+    let alive = true
+    void desktop.update
+      .status()
+      .then((next) => {
+        if (alive) setUpdateStatus(next)
+      })
+      .catch((err) => console.error('[update] 读取更新状态失败：', err))
+    void desktop.app
+      .version()
+      .then((next) => {
+        if (alive) setVersion(next)
+      })
+      .catch((err) => console.error('[update] 读取版本号失败：', err))
+    return () => {
+      alive = false
+    }
   }, [setUpdateStatus])
 
   const meta = STATE_META[status.state]
@@ -58,17 +74,19 @@ export function UpdatePanel() {
 
   const run = async (action: 'check' | 'download'): Promise<void> => {
     setBusy(true)
-    const next = action === 'check' ? await desktop.update.check() : await desktop.update.download()
-    setUpdateStatus(next)
-    setBusy(false)
+    try {
+      const next = action === 'check' ? await desktop.update.check() : await desktop.update.download()
+      setUpdateStatus(next)
+    } catch (err) {
+      console.error('[update] 更新操作失败：', err)
+    } finally {
+      // 必须放在 finally：否则一次异常会让按钮永久停留在禁用态
+      setBusy(false)
+    }
   }
 
   return (
-    <div className="glass-card rounded-card p-3">
-      <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-        <RefreshCw size={13} className="text-accent" /> 关于与更新
-      </h3>
-
+    <SectionCard title="关于与更新" icon={<RefreshCw size={13} />}>
       <div className="mt-2 flex flex-col gap-2">
         <SettingRow
           icon={<Power size={12} />}
@@ -168,7 +186,7 @@ export function UpdatePanel() {
 
         <SettingRow icon={<RefreshCw size={12} />} title="自动检查更新" description="启动后静默检查，发现新版本时提示">
           <Switch
-            checked={settings.autoUpdateCheck}
+            checked={autoUpdateCheck}
             onChange={(value) => patch({ autoUpdateCheck: value })}
             label="自动检查更新"
           />
@@ -179,6 +197,6 @@ export function UpdatePanel() {
           若仓库为私有，自动更新将无法拉取 Release 资源，需要将仓库设为公开。
         </p>
       </div>
-    </div>
+    </SectionCard>
   )
 }

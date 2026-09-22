@@ -1,28 +1,43 @@
 {
   "name": "todo-widget",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "桌面待办小组件 — 磨砂玻璃质感的 Electron 待办应用",
   "main": "./out/main/index.js",
   "author": "Todo Widget",
   "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LOVEYUE40/To-Do_List.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "icon": "node scripts/generate-icon.mjs",
     "package": "npm run icon && electron-vite build && electron-builder --win --config electron-builder.yml",
     "release": "npm run icon && electron-vite build && electron-builder --win --publish always --config electron-builder.yml"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.1.0",
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -32,8 +47,13 @@
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^15.15.0",
     "lucide-react": "^0.454.0",
     "postcss": "^8.4.49",
+    "prettier": "^3.9.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",
@@ -41,7 +61,9 @@
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.6.3",
+    "typescript-eslint": "^8.70.0",
     "vite": "^5.4.11",
+    "vitest": "^3.2.7",
     "zustand": "^4.5.5"
   }
 }

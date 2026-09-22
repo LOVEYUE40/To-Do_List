@@ -9,7 +9,7 @@ export type WindowMode = 'widget' | 'window'
 
 export type ColorScheme = 'light' | 'dark' | 'system'
 
-export type ThemeId = 'aurora' | 'ocean' | 'sakura' | 'forest' | 'sunset' | 'midnight' | 'custom'
+export type ThemeId = 'aurora' | 'ocean' | 'sakura' | 'forest' | 'sunset' | 'warmpaper' | 'custom'
 
 /** 任务状态筛选维度 */
 export type FilterStatus = 'all' | 'active' | 'done' | 'today' | 'overdue'
@@ -185,9 +185,12 @@ export type DesktopEvent =
 export interface DesktopApi {
   data: {
     load(): Promise<AppData>
-    save(patch: Partial<AppData>): Promise<void>
+    /** 返回 false 表示补丁结构非法已被拒绝；非法元素会被丢弃而非整单失败 */
+    save(patch: Partial<AppData>): Promise<boolean>
     summary(): Promise<DataSummary>
     exportFile(): Promise<ExportResult>
+    /** 导出 Excel 任务报表（.xlsx，含「任务」「清单」两个工作表） */
+    exportExcelFile(): Promise<ExportResult>
     importFile(): Promise<ImportResult>
     clearAll(): Promise<AppData>
     openFolder(): Promise<boolean>
@@ -197,7 +200,8 @@ export interface DesktopApi {
     set(patch: Partial<AppSettings>): Promise<AppSettings>
   }
   window: {
-    setMode(mode: WindowMode): Promise<void>
+    /** 返回 false 表示 mode 非法已被拒绝（避免非法形态落盘导致窗口建不出来） */
+    setMode(mode: WindowMode): Promise<boolean>
     setAlwaysOnTop(value: boolean): Promise<void>
     minimize(): void
     hide(): void

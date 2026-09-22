@@ -49,8 +49,10 @@ function TaskItemBase({ item, color, listName, sortable, now, onToggle, onEdit, 
           type="button"
           {...attributes}
           {...listeners}
-          title="拖动排序"
-          className="no-drag mt-[3px] hidden cursor-grab shrink-0 text-subtle transition-colors hover:text-ink active:cursor-grabbing group-hover:block"
+          title="拖动排序（也可聚焦后用方向键调整）"
+          // 不能用 hidden：display:none 会把按钮移出 tab 顺序，
+          // 导致 TaskList 配好的 KeyboardSensor 永远无法用键盘触发拖拽。
+          className="no-drag mt-[3px] shrink-0 cursor-grab text-subtle opacity-0 transition-opacity duration-150 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
         >
           <GripVertical size={13} />
         </button>
@@ -132,20 +134,23 @@ function TaskItemBase({ item, color, listName, sortable, now, onToggle, onEdit, 
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+      {/* focus-within 让键盘用户也能看到这两个按钮，而不再只依赖鼠标悬停 */}
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
           title="编辑任务"
+          aria-label="编辑任务"
           onClick={() => onEdit(item)}
-          className="no-drag flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-subtle transition-colors duration-150 hover:bg-line/12 hover:text-ink"
+          className="no-drag flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-subtle transition-colors duration-150 hover:bg-line/12 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
         >
           <Pencil size={12} />
         </button>
         <button
           type="button"
           title="删除任务"
+          aria-label="删除任务"
           onClick={() => onRemove(item.id)}
-          className="no-drag flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-subtle transition-colors duration-150 hover:bg-red-500/16 hover:text-red-400"
+          className="no-drag flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-subtle transition-colors duration-150 hover:bg-red-500/16 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
         >
           <Trash2 size={12} />
         </button>

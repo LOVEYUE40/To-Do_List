@@ -7,10 +7,6 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
-export function formatPercent(value: number): string {
-  return `${Math.round(value)}%`
-}
-
 /** 把 Electron accelerator 转成用户可读的展示形式 */
 export function formatShortcut(accelerator: string): string {
   if (!accelerator) return '未设置'
@@ -19,16 +15,6 @@ export function formatShortcut(accelerator: string): string {
     .replace(/Command|Cmd/g, 'Cmd')
     .replace(/Control/g, 'Ctrl')
     .replace(/\+/g, ' + ')
-}
-
-export function formatCount(count: number, unit: string): string {
-  return `${count} ${unit}`
-}
-
-/** 把中文标签截断到指定长度，避免窄窗口下换行 */
-export function truncate(text: string, max: number): string {
-  if (text.length <= max) return text
-  return `${text.slice(0, max - 1)}…`
 }
 
 /** 时间戳 -> <input type="datetime-local"> 需要的本地时间字符串 */

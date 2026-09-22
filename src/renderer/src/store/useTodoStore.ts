@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { AppData, FilterStatus, Priority, SortKey, TodoItem, TodoList, ViewId } from '@shared/types'
-import { SCHEMA_VERSION, STORAGE_KEYS } from '@shared/constants'
+import { STORAGE_KEYS } from '@shared/constants'
 import { uid } from '@shared/utils'
 import { desktop } from '@/lib/desktop-api'
 
@@ -111,7 +111,7 @@ function persist(lists: TodoList[], items: TodoItem[]): void {
 export const useTodoStore = create<TodoStore>((set, get) => {
   /** 统一的提交入口：更新内存 -> 落盘 */
   const commit = (patch: Partial<Pick<TodoStore, 'lists' | 'items'>>): void => {
-    set(patch as TodoStore)
+    set(patch)
     const state = get()
     persist(state.lists, state.items)
   }
@@ -133,9 +133,16 @@ export const useTodoStore = create<TodoStore>((set, get) => {
     quickAddSignal: 0,
 
     load: async () => {
-      const data = await desktop.data.load()
-      get().hydrate(data)
-      set({ ready: true })
+      try {
+        const data = await desktop.data.load()
+        get().hydrate(data)
+      } catch (err) {
+        // 读取失败也必须放行 UI：否则 ready 永远为 false，应用会卡在载入页
+        console.error('[todo] 载入本地数据失败，改用默认数据：', err)
+        set({ toast: '载入本地数据失败，已使用默认数据' })
+      } finally {
+        set({ ready: true })
+      }
     },
 
     hydrate: (data) => {
@@ -291,5 +298,3 @@ export const useTodoStore = create<TodoStore>((set, get) => {
     }
   }
 })
-
-export { DEFAULT_UI, SCHEMA_VERSION }

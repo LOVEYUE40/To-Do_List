@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AlarmClock, CalendarClock, CheckCheck, Flame, Target } from 'lucide-react'
+import { AlarmClock, BarChart3, CalendarClock, CheckCheck, Flame, Target } from 'lucide-react'
 import { buildTrend, computeListStats, computeStats } from '@shared/utils'
 import { Segmented } from '@/components/ui/Controls'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { useNow } from '@/hooks/useNow'
 import { useTodoStore } from '@/store/useTodoStore'
 
@@ -55,13 +56,32 @@ export function StatsView() {
     { name: '未完成', value: stats.active, color: 'rgb(var(--line-rgb) / 0.14)' }
   ]
 
+  // 用主题变量而不是硬编码深色：浅色模式下原本是深底深字，几乎看不清
   const tooltipStyle = {
-    background: 'rgba(15, 20, 34, 0.92)',
-    border: '1px solid rgba(255,255,255,0.14)',
+    background: 'rgb(var(--surface-rgb) / 0.96)',
+    border: '1px solid rgb(var(--line-rgb) / 0.16)',
     borderRadius: 12,
     fontSize: 12,
-    color: '#F5F7FA',
+    color: 'rgb(var(--ink-rgb))',
     padding: '6px 10px'
+  }
+  const tooltipItemStyle = { color: 'rgb(var(--ink-rgb))' }
+
+  // 零任务时不再渲染一堆全零图表，避免出现「110px 高但一根柱都没有」的空壳
+  if (stats.total === 0) {
+    return (
+      <section className="scroll-thin flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3 pt-3">
+        <div className="glass-card flex flex-1 flex-col items-center justify-center gap-2 rounded-card px-6 py-10 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-line/12 bg-line/[0.06] text-subtle">
+            <BarChart3 size={20} />
+          </span>
+          <p className="text-[12.5px] font-medium text-muted">还没有可统计的任务</p>
+          <p className="text-[11px] leading-relaxed text-subtle">
+            在待办页创建任务并勾选完成后，这里会显示整体完成率、完成趋势与各清单的完成度对比。
+          </p>
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -97,18 +117,18 @@ export function StatsView() {
         />
       </div>
 
-      <div className="glass-card rounded-card p-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[12.5px] font-semibold text-ink">整体完成率</h3>
-          {stats.overdue > 0 ? (
+      <SectionCard
+        title="整体完成率"
+        extra={
+          stats.overdue > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-pill border border-red-500/40 bg-red-500/12 px-2 py-[2px] text-[10.5px] text-red-400">
               <AlarmClock size={10} /> {stats.overdue} 项逾期
             </span>
           ) : (
             <span className="text-[10.5px] text-emerald-400">暂无逾期任务</span>
-          )}
-        </div>
-
+          )
+        }
+      >
         <div className="relative mt-1 h-[132px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -126,7 +146,7 @@ export function StatsView() {
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#F5F7FA' }} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -136,14 +156,9 @@ export function StatsView() {
             </span>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="glass-card rounded-card p-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[12.5px] font-semibold text-ink">完成趋势</h3>
-          <Segmented value={days} options={DAY_OPTIONS} onChange={setDays} />
-        </div>
-
+      <SectionCard title="完成趋势" extra={<Segmented value={days} options={DAY_OPTIONS} onChange={setDays} />}>
         <div className="mt-2 h-[148px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trend} margin={{ top: 6, right: 6, bottom: 0, left: -22 }}>
@@ -167,7 +182,7 @@ export function StatsView() {
                 tickLine={false}
                 width={30}
               />
-              <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#F5F7FA' }} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
               <Area
                 type="monotone"
                 dataKey="completed"
@@ -188,10 +203,9 @@ export function StatsView() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="glass-card rounded-card p-3">
-        <h3 className="text-[12.5px] font-semibold text-ink">清单完成度对比</h3>
+      <SectionCard title="清单完成度对比">
         <div style={{ height: Math.max(110, listStats.length * 34) }} className="mt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={listStats} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 0 }}>
@@ -204,7 +218,7 @@ export function StatsView() {
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#F5F7FA' }} formatter={(value) => [`${value}%`, '完成率']} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} formatter={(value) => [`${value}%`, '完成率']} />
               <Bar dataKey="rate" radius={[6, 6, 6, 6]} barSize={12} background={{ fill: 'rgb(var(--line-rgb) / 0.08)', radius: 6 }}>
                 {listStats.map((entry) => (
                   <Cell key={entry.id} fill={entry.color} />
@@ -216,7 +230,7 @@ export function StatsView() {
         <p className="mt-1 text-[10.5px] leading-relaxed text-subtle">
           条体颜色对应清单自定义色，长度表示该清单的完成率；悬停可查看具体数值。
         </p>
-      </div>
+      </SectionCard>
     </section>
   )
 }

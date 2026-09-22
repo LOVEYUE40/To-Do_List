@@ -1,7 +1,6 @@
 import type {
   AppData,
   AppInfo,
-  AppSettings,
   DataSummary,
   DesktopApi,
   DesktopEvent,
@@ -9,8 +8,8 @@ import type {
   ImportResult,
   UpdateStatus
 } from '@shared/types'
-import { DEFAULT_SETTINGS, SCHEMA_VERSION, STORAGE_KEYS } from '@shared/constants'
-import { normalizeSettings, validateAppData } from '@shared/utils'
+import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '@shared/constants'
+import { normalizeItemsPatch, normalizeListsPatch, normalizeSettings, validateAppData } from '@shared/utils'
 
 /**
  * 浏览器环境降级实现：仅在 `npm run dev:renderer` 直接预览界面时启用。
@@ -70,8 +69,20 @@ function createFallbackApi(): DesktopApi {
     data: {
       load: async () => cache,
       save: async (patch) => {
-        cache = { ...cache, ...patch, updatedAt: Date.now() }
+        // 与主进程 data:save 保持一致：非法元素丢弃而不是整单失败
+        const next: Partial<AppData> = {}
+        if (patch.lists !== undefined) {
+          const lists = normalizeListsPatch(patch.lists)
+          if (lists) next.lists = lists
+        }
+        if (patch.items !== undefined) {
+          const fallbackListId = next.lists?.[0]?.id ?? cache.lists[0]?.id ?? 'list_inbox'
+          const items = normalizeItemsPatch(patch.items, fallbackListId)
+          if (items) next.items = items
+        }
+        cache = { ...cache, ...next, updatedAt: Date.now() }
         writeFallback(cache)
+        return true
       },
       summary: async (): Promise<DataSummary> => ({
         path: '浏览器预览模式（localStorage）',
@@ -92,6 +103,8 @@ function createFallbackApi(): DesktopApi {
         return { path: '浏览器下载目录' }
       },
       importFile: async (): Promise<ImportResult> => ({ data: null, error: '浏览器预览模式不支持系统文件对话框' }),
+      // 浏览器预览模式没有主进程的 Excel 生成能力，直接视为取消
+      exportExcelFile: async (): Promise<ExportResult> => ({ path: null, canceled: true }),
       clearAll: async () => {
         cache = {
           schemaVersion: SCHEMA_VERSION,
@@ -114,7 +127,7 @@ function createFallbackApi(): DesktopApi {
       }
     },
     window: {
-      setMode: async () => undefined,
+      setMode: async () => false,
       setAlwaysOnTop: async () => undefined,
       minimize: () => undefined,
       hide: () => undefined,
@@ -159,11 +172,28 @@ function createFallbackApi(): DesktopApi {
   }
 }
 
-export const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.desktop)
-
 export const desktop: DesktopApi = window.desktop ?? createFallbackApi()
 
-/** 便于开发期调试：缓存一份 localStorage 键名 */
-export const UI_STORAGE_KEY = STORAGE_KEYS.uiState
+/**
+ * 只请求一次并缓存结果。版本号、平台、运行环境在进程生命周期内不会变化，
+ * 而视图是条件渲染的，切 tab 会反复挂载组件——缓存可避免重复的 IPC 往返。
+ * 失败时不缓存，下次调用会重试。
+ */
+function cacheOnce<T>(factory: () => Promise<T>): () => Promise<T> {
+  let cached: Promise<T> | null = null
+  return () => {
+    if (!cached) {
+      cached = factory().catch((err) => {
+        cached = null
+        throw err
+      })
+    }
+    return cached
+  }
+}
 
-export type { AppSettings }
+/** 应用版本号：进程内不变，全局缓存一份 */
+export const getAppVersion = cacheOnce(() => desktop.app.version())
+
+/** 运行环境与兼容性信息：进程内不变，全局缓存一份 */
+export const getAppInfo = cacheOnce(() => desktop.app.info())

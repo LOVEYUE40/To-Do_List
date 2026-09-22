@@ -30,9 +30,10 @@ const EVENT_CHANNELS: Record<DesktopEvent, string> = {
 const api: DesktopApi = {
   data: {
     load: () => ipcRenderer.invoke(IPC.dataLoad) as Promise<AppData>,
-    save: (patch: Partial<AppData>) => ipcRenderer.invoke(IPC.dataSave, patch) as Promise<void>,
+    save: (patch: Partial<AppData>) => ipcRenderer.invoke(IPC.dataSave, patch) as Promise<boolean>,
     summary: () => ipcRenderer.invoke(IPC.dataSummary) as Promise<DataSummary>,
     exportFile: () => ipcRenderer.invoke(IPC.dataExport) as Promise<ExportResult>,
+    exportExcelFile: () => ipcRenderer.invoke(IPC.dataExportExcel) as Promise<ExportResult>,
     importFile: () => ipcRenderer.invoke(IPC.dataImport) as Promise<ImportResult>,
     clearAll: () => ipcRenderer.invoke(IPC.dataClear) as Promise<AppData>,
     openFolder: () => ipcRenderer.invoke(IPC.dataOpenFolder) as Promise<boolean>
@@ -42,7 +43,7 @@ const api: DesktopApi = {
     set: (patch: Partial<AppSettings>) => ipcRenderer.invoke(IPC.settingsSet, patch) as Promise<AppSettings>
   },
   window: {
-    setMode: (mode: WindowMode) => ipcRenderer.invoke(IPC.windowSetMode, mode) as Promise<void>,
+    setMode: (mode: WindowMode) => ipcRenderer.invoke(IPC.windowSetMode, mode) as Promise<boolean>,
     setAlwaysOnTop: (value: boolean) =>
       ipcRenderer.invoke(IPC.windowSetAlwaysOnTop, value) as Promise<void>,
     minimize: () => ipcRenderer.send(IPC.windowMinimize),
