@@ -40,9 +40,11 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      # 注意：这里不要设 ELECTRON_MIRROR——electron-builder 的下载器拼 GitHub
+      # release URL 时不补 v 前缀（31.7.7 vs v31.7.7），会 404；
+      # 不设置时它默认走官方地址且路径正确
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
         run: npm run release
